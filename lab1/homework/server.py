@@ -14,18 +14,15 @@ def sigint_handler(sig, frame):
 
 signal.signal(signal.SIGINT, sigint_handler)
 
-# Function to handle client connections
 def handle_client(client_socket, addr, client_id, clients):
     while not stop_event.is_set():
         try:
-            # Receive data from the client
             data = client_socket.recv(1024).decode('utf-8')
             if not data:
                 print(f"Client {addr} disconnected")
                 clients.remove(client_socket)
                 break
 
-            # Broadcast the message to all connected clients
             data = f"{client_id}: " + data
             for client in clients:
                 if client != client_socket:
@@ -42,7 +39,6 @@ def send_dying_message(clients):
     for client in clients:
         client.send(message.encode('utf-8'))
 
-# Set up the server
 host = '127.0.0.1'
 port = 5555
 
@@ -69,18 +65,14 @@ print(f"Server listening on {host}:{port}")
 
 clients = []
 client_id = -1
-# Accept and handle client connections
 try:
     while True:
-        # udp_thread = threading.Thread(target=handle_udp, args=())
         client_socket, addr = server_tcp.accept()
         print(f"Accepted connection from {addr[0]}:{addr[1]}")
         client_id += 1
         clients.append(client_socket)
         
-        # Start a new thread to handle the client
         client_thread = threading.Thread(target=handle_client, args=(client_socket, addr, client_id, clients))
-        # client_thread.daemon = True
         client_thread.start()
 except socket.error as e:
     print("Server socket error: ", e)
@@ -92,4 +84,3 @@ finally:
     server_tcp.close()
     print("Server going down...")
     sys.exit(1)
-

@@ -9,7 +9,6 @@ stop_event = threading.Event()
 def receive_messages(client_socket):
     while not stop_event.is_set():
         try:
-            # Receive and display messages from the server
             data = client_socket.recv(1024).decode('utf-8')
             print(data)
         except Exception as e:
@@ -26,7 +25,6 @@ def sigint_handler(sig, frame):
 
 signal.signal(signal.SIGINT, sigint_handler)
 
-# Set up the client
 host = '127.0.0.1'
 port = 5555
 
@@ -34,11 +32,9 @@ client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 client_tcp.connect((host, port))
 
-# Start a thread to receive messages
 receive_thread = threading.Thread(target=receive_messages, args=(client_tcp,))
 receive_thread.start()
 
-# Send messages to the server
 try:
     while True:
         message = input()
