@@ -6,25 +6,22 @@ from pydantic import BaseModel
 
 app=FastAPI( )
 
-
+class Vote(BaseModel):
+    answer:bool
+    description:str
 class Poll():
     name: str
     description: Union[str, None] = None
     aggreements:int = 0
     disagreements:int = 0
-
+    votes:list[Vote] = []
 class PollInfo(BaseModel):
     name:str
     description: Union[str, None] = None
 
-class Vote(BaseModel):
-    pollName:str
-    answer:bool
-
 polls:dict[str, Poll] = {}
-votes:list[Vote] = []
 
-@app.get("/poll/all")
+@app.get("/poll/")
 async def get_all_polls():
     return polls
 
@@ -75,18 +72,54 @@ async def get_poll(poll_name:str):
     raise HTTPException(status_code = 404, detail="Poll with given name does not exist")
 
 
-@app.post("/poll/vote")
-async def vote_in_poll(vote: Vote):
-    if polls.get(vote.pollName):
-        votes.append(vote)
+@app.post("/poll/{poll_name}/vote")
+async def vote_in_poll(poll_name:str, vote: Vote):
+    poll = polls.get(poll_name)
+    if poll:
+        poll.votes.append(vote)
         if vote.answer:
-            polls[vote.pollName].aggreements += 1 
+            poll.aggreements += 1 
         else:
-            polls[vote.pollName].disagreements += 1
-        return polls[vote.pollName]
+            poll.disagreements += 1
+        return poll
     # return {"message":"No poll with given name"}
     raise HTTPException(status_code = 404, detail="Poll with given name does not exist")
 
-@app.get("/vote/")
-async def get_all_votes():
-    return votes
+
+@app.get("/poll/{poll_name}/vote")
+async def get_votes_in_poll(poll_name:str):
+    poll = polls.get(poll_name)
+    if poll:
+        return poll.votes
+    raise HTTPException(status_code = 404, detail="Poll with given name does not exist")
+
+@app.get("/poll/{poll_name}/vote/{vote_id}")
+async def get_vote_from_poll(poll_name:str, vote_id:int):
+    poll = polls.get(poll_name)
+    if poll:
+        if 0 <= vote_id < len(poll.votes):
+            return poll.votes[vote_id]
+        raise HTTPException(status_code = 404, detail="Vote with given ID does not exist")
+    raise HTTPException(status_code = 404, detail="Poll with given name does not exist")
+
+
+@app.put("/poll/{poll_name}/vote/{vote_id}")
+async def get_vote_from_poll(poll_name:str, vote_id:int, vote:Vote):
+    poll = polls.get(poll_name)
+    if poll:
+        if 0 <= vote_id <= len(poll.votes):
+            poll.votes[vote_id] = vote
+            return poll.votes[vote_id]
+        raise HTTPException(status_code = 404, detail="Vote with given ID does not exist")
+    raise HTTPException(status_code = 404, detail="Poll with given name does not exist")
+
+
+@app.delete("/poll/{poll_name}/vote/{vote_id}")
+async def get_vote_from_poll(poll_name:str, vote_id:int):
+    poll = polls.get(poll_name)
+    if poll:
+        if 0 <= vote_id <= len(poll.votes):
+            del poll.votes[vote_id]
+            return poll.votes[vote_id]
+        raise HTTPException(status_code = 404, detail="Vote with given ID does not exist")
+    raise HTTPException(status_code = 404, detail="Poll with given name does not exist")

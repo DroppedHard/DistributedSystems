@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOaaS with profanity filter</title>
+</head>
+<body>
+    <h1>Fuck Off as a Service with profanity filter</h1>
+    <p>Here you can generate texts from <a href="https://foaas.dev">FOaaS</a> but with an option to filter profanity using <a href="https://api-ninjas.com/api/profanityfilter">Ninja API profanity filter.</a> </p>
+    <form id="apiForm">
+        <label for="endpoint">Select FOaaS API Endpoint:
+            <select id="endpoint" name="endpoint">
+                {% for name in endpoints %}
+                <option value="{{ name }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <br>
+        <div id="endpointInfo">
+            <p id="endpointInfoName">Name: </p>
+            <p id="url">URL:</p>
+            <p id="requiredFields">Required Fields:</p>
+            <ul id="requiredFieldsList">
+            </ul>
+        </div>
+        <input id="profanityFilter" type="checkbox" name="profanityFilter" checked>Filter profanity</input>
+        <br>
+        <label for="APIKeyInput" id="APIKeyLabel">Ninja API Key:
+            <input type="text" name="APIKey" id="APIKeyInput" placeholder="API key"></input>
+        </label>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <iframe id="HTMLFrame", width="100%", height="500"></iframe>
+
+    <script>
+        const endpointInfo = JSON.parse({{endpoint_info | tojson | safe}})
+        const url = document.getElementById('url');
+        const requiredFieldsList = document.getElementById('requiredFieldsList');
+        const endpointInfoName = document.getElementById('endpointInfoName');
+
+        url.textContent = `URL: ${endpointInfo['{{endpoints[0]}}'].url}`;
+        endpointInfoName.textContent = 'Name: ' + endpointInfo['{{endpoints[0]}}'].name
+
+        const fields = endpointInfo['{{endpoints[0]}}'].fields;
+        fields.forEach(field => {
+            const li = document.createElement('li');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = field.name;
+            input.placeholder = field.field;
+            li.appendChild(input);
+            requiredFieldsList.appendChild(li);
+        });
+
+        const profanityFilter = document.getElementById('profanityFilter');
+        const APIKeyLabel = document.getElementById('APIKeyLabel');
+        const APIKeyInput = document.getElementById('APIKeyInput');
+
+        profanityFilter.addEventListener('change', function() {
+            if (profanityFilter.checked) {
+                APIKeyLabel.style.display = 'block';
+            } else {
+                APIKeyLabel.style.display = 'none';
+                APIKeyInput.value = ""
+            }
+        });
+
+        document.getElementById('endpoint').addEventListener('change', function() {
+            const selectedEndpoint = this.value;
+            const url = document.getElementById('url');
+            const requiredFieldsList = document.getElementById('requiredFieldsList');
+            const endpointInfoName = document.getElementById('endpointInfoName');
+            url.textContent = `URL: ${endpointInfo[selectedEndpoint].url}`;
+            endpointInfoName.textContent = 'Name: ' + endpointInfo[selectedEndpoint].name
+
+            while (requiredFieldsList.firstChild) {
+                requiredFieldsList.removeChild(requiredFieldsList.firstChild);
+            }
+
+            const fields = endpointInfo[selectedEndpoint].fields;
+            fields.forEach(field => {
+                const li = document.createElement('li');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = field.name;
+                input.placeholder = field.field;
+                li.appendChild(input);
+                requiredFieldsList.appendChild(li);
+            });
+        });
+
+        document.getElementById('apiForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const endpoint = formData.get('endpoint');
+            const APIKey = formData.get('APIKey');
+            const srcData = endpointInfo[endpoint]
+            
+ 
+            finalUrl = srcData.url
+            srcData.fields.forEach(field => {
+                console.log(":"+field.field, formData.get(field.name))
+                finalUrl = finalUrl.replace(":"+field.field, formData.get(field.name))
+            })
+
+            const data = {
+                url: finalUrl,
+                filterProfanity:document.getElementById("profanityFilter").checked,
+                APIKey: APIKey
+            }
+
+            const queryParams = new URLSearchParams(data);
+            console.log(`http://localhost:8000/foaas?${queryParams.toString()}`)
+            const response = await fetch(`http://localhost:8000/foaas?${queryParams.toString()}`, {
+                method: "GET",
+                mode: "cors",
+                headers: {
+                    "Content-Type": "application/json",
+                  },
+            });
+            console.log(response)
+            let res = await response.text()
+            if (res) {
+                document.getElementById("HTMLFrame").srcdoc = res;
+            }
+        });
+    </script>
+</body>
+</html>
